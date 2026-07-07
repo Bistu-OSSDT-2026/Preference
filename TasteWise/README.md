@@ -48,71 +48,66 @@
 
 ## 快速开始
 
-### 1. 进入项目目录
+### 一键启动（推荐）
 
-```bash
-# Windows (cmd)
-cd TasteWise
-
-# Windows (PowerShell)
-cd TasteWise
-
-# macOS / Linux
-cd TasteWise
+**Windows (cmd)** — 直接双击 `start.bat`，或执行：
+```batch
+start.bat
 ```
-
-### 2. 创建虚拟环境（推荐）
 
 **Windows (PowerShell):**
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\start.ps1
 ```
+> 如果提示"无法加载文件"，先执行：`Set-ExecutionPolicy -Scope Process Bypass`
 
-> 如果 PowerShell 阻止脚本执行，先运行：
-> ```powershell
-> Set-ExecutionPolicy -Scope Process Bypass
-> ```
-> 然后重新激活虚拟环境。
-
-**Windows (cmd.exe):**
-```cmd
-python -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-**macOS / Linux (bash):**
+**macOS / Linux:**
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+chmod +x start.sh
+./start.sh
 ```
 
-### 3. 安装依赖
+启动脚本会自动完成：✅ 检测 Python → ✅ 创建虚拟环境 → ✅ 安装依赖 → ✅ 启动应用。
+
+启动成功后，终端会输出：
+```
+Local URL: http://localhost:8501
+```
+
+**浏览器会自动打开这个地址**，那就是 TasteWise 的界面。
+
+> 💡 **http://localhost:8501 是什么意思？**
+> - `localhost` = 你的**本机**（127.0.0.1），数据只在你自己电脑上传输，不会传到外网
+> - `8501` = **端口号**，类似"第8501号通道"
+> - 合起来就是：在你**自己的电脑**上，通过 **8501 号端口**访问应用
+> - 如果浏览器没有自动弹出，手动输入 `http://localhost:8501` 即可
+
+### 手动分步启动
+
+如果希望手动控制每一步：
 
 ```bash
+# 1. 进入项目目录
+cd TasteWise
+
+# 2. 创建虚拟环境
+python -m venv .venv
+
+# 3. 激活虚拟环境
+#    Windows (cmd):  .venv\Scripts\activate.bat
+#    Windows (PS):   .\.venv\Scripts\Activate.ps1
+#    Mac/Linux:      source .venv/bin/activate
+
+# 4. 安装依赖
 pip install -r requirements.txt
-```
 
-### 4. 启动应用
-
-```bash
+# 5. 启动应用
 streamlit run app.py
 ```
 
-终端会输出类似以下信息：
+### 停止应用
 
-```
-  You can now view your Streamlit app in your browser.
-
-  Local URL: http://localhost:8501
-  Network URL: http://192.168.x.x:8501
-```
-
-浏览器会自动打开 http://localhost:8501，如果没有自动打开，手动访问这个地址即可。
-
-### 5. 停止应用
-
-在终端中按 `Ctrl + C` 停止运行。
+在终端中按 `Ctrl + C`，或直接关闭启动脚本的窗口。
 
 ---
 
@@ -260,6 +255,8 @@ TasteWise/                          # 项目根目录
 ├── data_manager.py                 # CSV 数据读写层
 ├── requirements.txt                # Python 依赖清单
 ├── README.md                       # 本文件
+├── start.bat                       # Windows 一键启动脚本
+├── start.ps1                       # PowerShell 一键启动脚本
 ├── LICENSE                         # MIT 开源协议
 ├── .gitignore                      # Git 忽略规则
 │
@@ -372,3 +369,4 @@ Streamlit 在启动时一次性加载数据。
 ## License
 
 [MIT](LICENSE)
+
