@@ -33,6 +33,7 @@ def recommend_dishes(
     canteen: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
+    exclude_recipe_ids: set[int] | None = None,
 ) -> pd.DataFrame:
     """
     根据用户五味偏好返回 Top-K 菜品。
@@ -65,6 +66,9 @@ def recommend_dishes(
 
     if max_price is not None:
         filtered = filtered[filtered["price"] <= float(max_price)]
+
+    if exclude_recipe_ids:
+        filtered = filtered[~filtered["dish_id"].isin(exclude_recipe_ids)]
 
     if filtered.empty:
         return filtered.assign(match_score=pd.Series(dtype=float))
