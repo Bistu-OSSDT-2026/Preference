@@ -89,6 +89,56 @@ class CsvDataStore:
         )
 
 
+def load_interactions(user_id: str) -> pd.DataFrame:
+    """读取 interactions.csv，筛选指定用户，联表菜品名称，按时间倒序返回。"""
+    if not INTERACTIONS_PATH.exists():
+        return pd.DataFrame()
+
+    interactions = pd.read_csv(INTERACTIONS_PATH, encoding="utf-8")
+
+    if interactions.empty:
+        return interactions
+
+    required_cols = {"user_id", "dish_id", "action", "timestamp"}
+    missing = required_cols - set(interactions.columns)
+    if missing:
+        raise ValueError(f"交互数据缺少字段：{sorted(missing)}")
+
+    user_data = interactions[interactions["user_id"] == user_id].copy()
+    if user_data.empty:
+        return user_data
+
+    user_data["dish_id"] = pd.to_numeric(user_data["dish_id"], errors="raise")
+
+    dishes = load_dishes()
+    merged = user_data.merge(
+        dishes[["dish_id", "name"]], on="dish_id", how="left"
+    )
+    merged.rename(columns={"name": "dish_name"}, inplace=True)
+
+    return merged.sort_values("timestamp", ascending=False).reset_index(drop=True)
+
+
+def get_interacted_dish_ids(user_id: str) -> set[int]:
+    """返回用户已交互过的 dish_id 集合。"""
+    if not INTERACTIONS_PATH.exists():
+        return set()
+
+    interactions = pd.read_csv(INTERACTIONS_PATH, encoding="utf-8")
+
+    if interactions.empty:
+        return set()
+
+    required_cols = {"user_id", "dish_id"}
+    missing = required_cols - set(interactions.columns)
+    if missing:
+        raise ValueError(f"交互数据缺少字段：{sorted(missing)}")
+
+    user_data = interactions[interactions["user_id"] == user_id]
+    dish_ids = pd.to_numeric(user_data["dish_id"], errors="coerce").dropna()
+    return set(int(dish_id) for dish_id in dish_ids.unique())
+
+
 data_store = CsvDataStore()
 
 

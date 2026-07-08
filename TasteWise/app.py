@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from data_manager import append_interaction, load_dishes
+from data_manager import append_interaction, get_interacted_dish_ids, load_dishes, load_interactions
 from recommender import recommend_dishes
 from utils.explanation import format_reasons
 
@@ -293,6 +293,12 @@ with st.sidebar:
 
     top_k = st.slider("推荐数量", 3, 10, 5)
 
+    exclude_eaten = st.checkbox(
+        "排除已吃过的食谱",
+        value=False,
+        help="勾选后，推荐结果将排除你已交互过（喜欢/不喜欢/收藏）的菜品。",
+    )
+
 st.markdown(
     f"""
     <section class="tw-hero">
@@ -361,6 +367,7 @@ if st.button("生成推荐", type="primary", use_container_width=True):
     weights = [weight_values[key] for key, *_ in TASTE_META]
     canteen_filter = None if selected_canteen == "全部" else selected_canteen
 
+    exclude_ids = get_interacted_dish_ids(user_id) if exclude_eaten else None
     recommendations = recommend_dishes(
         user_profile=user_profile,
         dishes=dishes,
@@ -370,6 +377,7 @@ if st.button("生成推荐", type="primary", use_container_width=True):
         canteen=canteen_filter,
         min_price=price_range[0],
         max_price=price_range[1],
+        exclude_recipe_ids=exclude_ids,
     )
 
     st.session_state.user_profile = user_profile
@@ -426,7 +434,53 @@ else:
                     append_interaction(user_id, dish_id, "favorite")
                     st.success("已收藏")
 
+with st.expander("📋 菜品列表"):
+    dish_name_query = st.text_input("搜索菜品名称", placeholder="输入菜品名称筛选…")
+    dish_cols = {
+        "name": "名称",
+        "canteen": "食堂",
+        "window": "窗口",
+        "price": "价格",
+        "acid": "酸",
+        "sweet": "甜",
+        "bitter": "苦",
+        "spicy": "辣",
+        "salty": "咸",
+    }
+    filtered_dishes = dishes.copy()
+    if dish_name_query:
+        filtered_dishes = filtered_dishes[
+            filtered_dishes["name"].str.contains(dish_name_query, case=False, na=False)
+        ]
+    display_df = filtered_dishes[list(dish_cols.keys())].copy()
+    display_df.rename(columns=dish_cols, inplace=True)
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+with st.expander("📜 我的饮食记录"):
+    history = load_interactions(user_id)
+    if history.empty:
+        st.info("暂无饮食记录。对推荐菜品点击「喜欢」「不喜欢」或「收藏」后，记录会出现在这里。")
+    else:
+        action_labels = {
+            "like": "👍 喜欢",
+            "dislike": "👎 不喜欢",
+            "favorite": "⭐ 收藏",
+        }
+        display_history = history[["dish_name", "action", "timestamp"]].copy()
+        display_history["action"] = display_history["action"].map(
+            lambda a: action_labels.get(a, a)
+        )
+        display_history.rename(
+            columns={
+                "dish_name": "菜品名称",
+                "action": "操作",
+                "timestamp": "时间",
+            },
+            inplace=True,
+        )
+        st.dataframe(display_history, use_container_width=True, hide_index=True)
+
 st.markdown(
-    '<div class="tw-footer">当前版本：五味画像、Top-K 推荐、食堂/价格筛选、推荐理由、用户反馈记录。数据访问层已集中，便于后续替换 CSV 或接入数据库。</div>',
+    '<div class="tw-footer">当前版本：五味画像、Top-K 推荐、食堂/价格筛选、推荐理由、用户反馈记录、菜品浏览、饮食历史、已吃排除。数据访问层已集中，便于后续替换 CSV 或接入数据库。</div>',
     unsafe_allow_html=True,
 )
