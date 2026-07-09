@@ -4,7 +4,6 @@ from typing import Iterable
 
 import numpy as np
 
-
 TASTE_NAMES = ["酸味", "甜味", "苦味", "辣味", "咸味"]
 
 

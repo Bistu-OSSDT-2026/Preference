@@ -1,18 +1,17 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from data_importer import (
-    DataImporter,
-    DataValidator,
     DISH_COLUMNS,
     INTERACTION_COLUMNS,
     USER_COLUMNS,
+    DataImporter,
+    DataValidator,
     generate_templates,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 测试夹具

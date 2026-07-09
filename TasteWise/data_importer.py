@@ -7,8 +7,7 @@ from typing import Optional
 
 import pandas as pd
 
-from data_manager import DATA_DIR, DISHES_PATH, INTERACTIONS_PATH
-
+from data_manager import DATA_DIR
 
 # ── Schema 常量 ──────────────────────────────────────────────────────────────
 
@@ -29,8 +28,6 @@ NUMERIC_USER_COLS = ["acid", "sweet", "bitter", "spicy", "salty"]
 
 TASTE_COLS = ["acid", "sweet", "bitter", "spicy", "salty"]
 VALID_ACTIONS = {"like", "dislike", "favorite"}
-
-USERS_PATH = DATA_DIR / "users.csv"
 
 TEMPLATE_DIR = DATA_DIR / "import_templates"
 
@@ -311,10 +308,15 @@ class DataImporter:
             )
             return report
 
+        target = self.data_dir / "dishes.csv"
+
         # 3. 读取现有数据
         existing = pd.DataFrame()
-        if DISHES_PATH.exists():
-            existing = pd.read_csv(DISHES_PATH, encoding="utf-8")
+        if target.exists() and target.stat().st_size > 0:
+            try:
+                existing = pd.read_csv(target, encoding="utf-8")
+            except pd.errors.EmptyDataError:
+                existing = pd.DataFrame()
 
         # 4. 合并
         merged, added, skipped, overwritten_val = self._merge_dataframes(
@@ -336,8 +338,8 @@ class DataImporter:
             report["summary"] = "；".join(parts)
             return report
 
-        self._backup(DISHES_PATH)
-        merged.to_csv(DISHES_PATH, index=False, encoding="utf-8")
+        self._backup(target)
+        merged.to_csv(target, index=False, encoding="utf-8")
 
         report["success"] = True
         parts = [f"✅ 新增 {added} 条菜品"]
@@ -399,10 +401,15 @@ class DataImporter:
             )
             return report
 
+        target = self.data_dir / "users.csv"
+
         # 3. 读取现有数据
         existing = pd.DataFrame()
-        if USERS_PATH.exists():
-            existing = pd.read_csv(USERS_PATH, encoding="utf-8")
+        if target.exists() and target.stat().st_size > 0:
+            try:
+                existing = pd.read_csv(target, encoding="utf-8")
+            except pd.errors.EmptyDataError:
+                existing = pd.DataFrame()
 
         # 4. 合并
         merged, added, skipped, overwritten_val = self._merge_dataframes(
@@ -424,8 +431,8 @@ class DataImporter:
             report["summary"] = "；".join(parts)
             return report
 
-        self._backup(USERS_PATH)
-        merged.to_csv(USERS_PATH, index=False, encoding="utf-8")
+        self._backup(target)
+        merged.to_csv(target, index=False, encoding="utf-8")
 
         report["success"] = True
         parts = [f"✅ 新增 {added} 个用户"]
@@ -488,11 +495,13 @@ class DataImporter:
             )
             return report
 
+        target = self.data_dir / "interactions.csv"
+
         # 3. 读取现有数据
         existing = pd.DataFrame()
-        if INTERACTIONS_PATH.exists():
+        if target.exists():
             try:
-                existing = pd.read_csv(INTERACTIONS_PATH, encoding="utf-8")
+                existing = pd.read_csv(target, encoding="utf-8")
             except Exception:
                 pass
 
@@ -504,9 +513,9 @@ class DataImporter:
             report["summary"] = f"🔍 预览：将追加 {len(incoming)} 条交互记录"
             return report
 
-        self._backup(INTERACTIONS_PATH)
+        self._backup(target)
         merged = pd.concat([existing, incoming], ignore_index=True)
-        merged.to_csv(INTERACTIONS_PATH, index=False, encoding="utf-8")
+        merged.to_csv(target, index=False, encoding="utf-8")
 
         report["success"] = True
         report["summary"] = f"✅ 已追加 {len(incoming)} 条交互记录"
@@ -618,7 +627,7 @@ if __name__ == "__main__":
         elif "interact" in name:
             report = importer.import_interactions(source, dry_run=dry)
         else:
-            print(f"无法自动识别文件类型，请确保文件名包含 dish/user/interact")
+            print("无法自动识别文件类型，请确保文件名包含 dish/user/interact")
             print(f"文件名：{source.name}")
             sys.exit(1)
 

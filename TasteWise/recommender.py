@@ -13,7 +13,6 @@ from utils.hometown import (
 )
 from utils.similarity import cosine_match_score, weighted_euclidean_score
 
-
 TASTE_COLUMNS = ["acid", "sweet", "bitter", "spicy", "salty"]
 
 

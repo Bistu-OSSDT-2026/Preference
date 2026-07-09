@@ -21,7 +21,6 @@ from recommender import recommend_dishes
 from utils.explanation import format_reasons
 from utils.hometown import HOMETOWN_PREFERENCES, hometown_options
 
-
 TASTE_META = [
     ("acid", "酸", "明亮开胃", "#f59e0b", "🍋"),
     ("sweet", "甜", "柔和回甘", "#ec4899", "🍬"),
