@@ -3,7 +3,9 @@ from __future__ import annotations
 import streamlit as st
 
 from data_manager import (
+    add_comment,
     append_interaction,
+    get_comments,
     get_interacted_dish_ids,
     load_dishes,
     load_interactions,
@@ -611,6 +613,40 @@ def render_recommendations(reco_df, empty_msg):
                     if st.button("收藏", key=f"favorite_{dish_id}", use_container_width=True):
                         append_interaction(user_id, dish_id, "favorite")
                         st.success("已收藏")
+
+                    if st.button("💬 评论", key=f"comment_btn_{dish_id}", use_container_width=True):
+                        st.session_state[f"show_comments_{dish_id}"] = \
+                            not st.session_state.get(f"show_comments_{dish_id}", False)
+
+            # === 评论区：点击"评论"按钮后展开 ===
+            if st.session_state.get(f"show_comments_{dish_id}", False):
+                st.divider()
+                st.markdown("**💬 评论**")
+                comments_df = get_comments(dish_id)
+                if comments_df.empty:
+                    st.info("暂无评论，快来发表第一条评论吧！")
+                else:
+                    for _, c in comments_df.iterrows():
+                        st.markdown(
+                            f"**{c['user_id']}** · {c['timestamp']}  \n"
+                            f"{c['comment']}"
+                        )
+                        st.divider()
+                with st.form(key=f"comment_form_{dish_id}", clear_on_submit=True):
+                    st.text_input(
+                        "评论内容",
+                        placeholder="说说你对这道菜的看法…",
+                        label_visibility="collapsed",
+                        key=f"ci_{dish_id}",
+                    )
+                    submitted = st.form_submit_button("💬 发送评论", use_container_width=True)
+                    if submitted:
+                        comment_val = st.session_state.get(f"ci_{dish_id}", "")
+                        if comment_val.strip():
+                            add_comment(user_id, dish_id, comment_val)
+                            st.success("✅ 评论已发表！")
+                        else:
+                            st.error("评论不能为空")
 
 
 # ────────── Recommendation Results ──────────
