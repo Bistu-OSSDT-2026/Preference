@@ -554,7 +554,7 @@ if st.button("生成推荐", type="primary", use_container_width=True):
 
 # ────────── Render results helper ──────────
 
-def render_recommendations(reco_df, empty_msg, section_title):
+def render_recommendations(reco_df, empty_msg):
     if reco_df is None:
         st.info(empty_msg)
     elif reco_df.empty:
