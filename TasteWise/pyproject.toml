@@ -1,0 +1,16 @@
+[project]
+name = "tastewise"
+version = "0.1.0"
+description = "五味食堂菜品推荐系统"
+requires-python = ">=3.10"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

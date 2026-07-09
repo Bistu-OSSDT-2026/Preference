@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-
 TASTE_VECTOR_LENGTH = 5
 
 
