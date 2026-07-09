@@ -106,3 +106,46 @@ def test_price_filter():
     )
 
     assert result["name"].tolist() == ["便宜菜"]
+
+
+def test_hometown_preference_can_influence_ranking():
+    dishes = pd.DataFrame(
+        [
+            {
+                "dish_id": 1,
+                "name": "清甜鸡饭",
+                "canteen": "一食堂",
+                "window": "家常窗口",
+                "price": 10,
+                "acid": 3,
+                "sweet": 4,
+                "bitter": 1,
+                "spicy": 2,
+                "salty": 3,
+            },
+            {
+                "dish_id": 2,
+                "name": "麻辣小炒肉",
+                "canteen": "二食堂",
+                "window": "湘菜窗口",
+                "price": 12,
+                "acid": 2,
+                "sweet": 1,
+                "bitter": 1,
+                "spicy": 5,
+                "salty": 4,
+            },
+        ]
+    )
+
+    result = recommend_dishes(
+        user_profile=[3, 3, 1, 3, 3],
+        dishes=dishes,
+        top_k=2,
+        hometown="湖南 / 江西",
+    )
+
+    assert result.iloc[0]["name"] == "麻辣小炒肉"
+    assert "家乡" in "；".join(result.iloc[0]["reasons"]) or "湖南" in "；".join(
+        result.iloc[0]["reasons"]
+    )
