@@ -614,14 +614,14 @@ def render_recommendations(reco_df, empty_msg):
                         append_interaction(user_id, dish_id, "favorite")
                         st.success("已收藏")
 
-                    if st.button("💬 评论", key=f"comment_btn_{dish_id}", use_container_width=True):
+                    if st.button("评论", key=f"comment_btn_{dish_id}", use_container_width=True):
                         st.session_state[f"show_comments_{dish_id}"] = \
                             not st.session_state.get(f"show_comments_{dish_id}", False)
 
             # === 评论区：点击"评论"按钮后展开 ===
             if st.session_state.get(f"show_comments_{dish_id}", False):
                 st.divider()
-                st.markdown("**💬 评论**")
+                st.markdown("**评论**")
                 comments_df = get_comments(dish_id)
                 if comments_df.empty:
                     st.info("暂无评论，快来发表第一条评论吧！")
