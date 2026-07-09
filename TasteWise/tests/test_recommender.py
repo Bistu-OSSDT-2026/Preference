@@ -1,9 +1,8 @@
+import numpy as np
 import pandas as pd
 
 from recommender import recommend_dishes
 from utils.similarity import weighted_euclidean_score
-
-import numpy as np
 
 
 def test_exact_match_gets_100():
@@ -106,3 +105,45 @@ def test_price_filter():
     )
 
     assert result["name"].tolist() == ["便宜菜"]
+
+
+def test_hometown_preference_can_influence_ranking():
+    dishes = pd.DataFrame(
+        [
+            {
+                "dish_id": 1,
+                "name": "清甜鸡饭",
+                "canteen": "一食堂",
+                "window": "家常窗口",
+                "price": 10,
+                "acid": 3,
+                "sweet": 4,
+                "bitter": 1,
+                "spicy": 2,
+                "salty": 3,
+            },
+            {
+                "dish_id": 2,
+                "name": "麻辣小炒肉",
+                "canteen": "二食堂",
+                "window": "湘菜窗口",
+                "price": 12,
+                "acid": 2,
+                "sweet": 1,
+                "bitter": 1,
+                "spicy": 5,
+                "salty": 4,
+            },
+        ]
+    )
+
+    result = recommend_dishes(
+        user_profile=[3, 3, 1, 3, 3],
+        dishes=dishes,
+        top_k=2,
+        hometown="湖南 / 江西",
+    )
+
+    assert result.iloc[0]["name"] == "麻辣小炒肉"
+    reason_text = "；".join(result.iloc[0]["reasons"])
+    assert "家乡" in reason_text or "湖南" in reason_text

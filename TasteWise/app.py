@@ -13,6 +13,7 @@ from data_manager import (
 )
 from recommender import recommend_dishes
 from utils.explanation import format_reasons
+from utils.hometown import HOMETOWN_PREFERENCES, hometown_options
 
 
 TASTE_META = [
@@ -391,6 +392,13 @@ with st.sidebar:
     st.markdown("---")
     st.header("推荐筛选")
 
+    hometown = st.selectbox(
+        "老家是哪里",
+        hometown_options(),
+        help="选择后，系统会轻微结合常见地域口味，让推荐更贴近你的家乡饮食习惯。",
+    )
+    st.caption(HOMETOWN_PREFERENCES[hometown].description)
+
     canteens = ["全部"] + sorted(dishes["canteen"].dropna().unique().tolist())
     selected_canteen = st.selectbox("食堂", canteens)
 
@@ -545,6 +553,7 @@ if st.button("生成推荐", type="primary", use_container_width=True):
         min_price=price_range[0],
         max_price=price_range[1],
         exclude_recipe_ids=exclude_ids,
+        hometown=hometown,
     )
 
     st.session_state.user_profile = user_profile

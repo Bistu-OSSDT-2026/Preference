@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 
 from utils.explanation import generate_reasons
+from utils.hometown import (
+    apply_hometown_to_profile,
+    hometown_keyword_bonus,
+    hometown_reason,
+)
 from utils.similarity import cosine_match_score, weighted_euclidean_score
 
 
@@ -34,6 +39,7 @@ def recommend_dishes(
     min_price: float | None = None,
     max_price: float | None = None,
     exclude_recipe_ids: set[int] | None = None,
+    hometown: str | None = None,
 ) -> pd.DataFrame:
     """
     根据用户五味偏好返回 Top-K 菜品。
@@ -48,8 +54,11 @@ def recommend_dishes(
         "加权欧氏距离" 或 "余弦相似度"。
     weights:
         五味重要性权重，仅对加权欧氏距离直接生效。
+    hometown:
+        用户家乡或地域口味，用于轻微调整五味画像并补充地域菜品线索。
     """
     user = _validate_profile(user_profile, "user_profile")
+    scoring_user = apply_hometown_to_profile(user, hometown)
 
     required = {"dish_id", "name", "canteen", "window", "price", *TASTE_COLUMNS}
     missing = required - set(dishes.columns)
@@ -95,14 +104,20 @@ def recommend_dishes(
         )
 
         if algorithm == "加权欧氏距离":
-            score = weighted_euclidean_score(user, dish_profile, weight_arr)
+            score = weighted_euclidean_score(scoring_user, dish_profile, weight_arr)
         elif algorithm == "余弦相似度":
-            score = cosine_match_score(user, dish_profile)
+            score = cosine_match_score(scoring_user, dish_profile)
         else:
             raise ValueError(f"不支持的算法：{algorithm}")
 
+        score = min(100.0, score + hometown_keyword_bonus(dish, hometown))
         scores.append(score)
-        reasons.append(generate_reasons(user, dish_profile))
+
+        dish_reasons = generate_reasons(scoring_user, dish_profile)
+        region_reason = hometown_reason(dish, hometown)
+        if region_reason:
+            dish_reasons = [region_reason, *dish_reasons]
+        reasons.append(dish_reasons[:3])
 
     result = filtered.copy()
     result["match_score"] = scores
