@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import streamlit as st
 
-from data_manager import append_interaction, get_interacted_dish_ids, load_dishes, load_interactions
+from data_manager import (
+    append_interaction,
+    get_interacted_dish_ids,
+    load_dishes,
+    load_interactions,
+    load_users,
+    register_user,
+    undo_last_interaction,
+)
 from recommender import recommend_dishes
 from utils.explanation import format_reasons
 from utils.hometown import HOMETOWN_PREFERENCES, hometown_options
@@ -16,6 +24,8 @@ TASTE_META = [
     ("salty", "咸", "鲜香扎实", "#0ea5e9", "🧂"),
 ]
 
+TASTE_DEFAULTS = {key: (1 if key == "bitter" else 3) for key, *_ in TASTE_META}
+
 
 st.set_page_config(
     page_title="TasteWise 五味食堂推荐",
@@ -23,7 +33,7 @@ st.set_page_config(
     layout="wide",
 )
 
-
+# ────────── Custom CSS ──────────
 st.markdown(
     """
     <style>
@@ -209,6 +219,30 @@ st.markdown(
         margin-top: 1.5rem;
     }
 
+    .tw-login-box {
+        max-width: 480px;
+        margin: 6rem auto 2rem;
+        text-align: center;
+    }
+
+    .tw-login-box h1 {
+        font-size: 2.4rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+
+    .tw-login-box p {
+        color: var(--tw-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .tw-login-box .test-hint {
+        color: var(--tw-primary-dark);
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+
     div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.72);
         border: 1px solid rgba(148, 163, 184, 0.25);
@@ -233,17 +267,10 @@ st.markdown(
     }
 
     @media (max-width: 760px) {
-        .tw-hero {
-            padding: 22px 20px;
-        }
-
-        .tw-title {
-            font-size: 2rem;
-        }
-
-        .tw-metrics {
-            grid-template-columns: 1fr;
-        }
+        .tw-hero { padding: 22px 20px; }
+        .tw-title { font-size: 2rem; }
+        .tw-metrics { grid-template-columns: 1fr; }
+        .tw-login-box { margin-top: 3rem; }
     }
     </style>
     """,
@@ -251,29 +278,119 @@ st.markdown(
 )
 
 
+# ────────── Login / Register Page ──────────
+
+def render_login_page():
+    st.markdown('<div class="tw-login-box">', unsafe_allow_html=True)
+    st.markdown("<h1>🍜 TasteWise</h1>", unsafe_allow_html=True)
+    st.markdown("<p>基于五味偏好的高校食堂菜品推荐系统</p>", unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="test-hint">🔑 测试账号无需密码，点击即可进入</div>',
+        unsafe_allow_html=True,
+    )
+
+    if st.button("🚀  测试登录", type="primary", use_container_width=True):
+        st.session_state.logged_in = True
+        st.session_state.user_id = "demo_user"
+        st.session_state.is_new_user = False
+        st.rerun()
+
+    st.markdown("---")
+
+    with st.expander("使用已有账号 / 注册"):
+        tab_login, tab_register = st.tabs(["登录", "注册"])
+
+        with tab_login:
+            login_id = st.text_input("输入用户 ID", key="login_id")
+            if st.button("登录", use_container_width=True):
+                users = load_users()
+                if users.empty or login_id.strip() not in users["user_id"].values:
+                    st.error(f"用户「{login_id}」不存在，请先注册")
+                else:
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = login_id.strip()
+                    st.session_state.is_new_user = False
+                    st.rerun()
+
+        with tab_register:
+            reg_id = st.text_input("设置用户 ID", key="reg_id",
+                                   help="2-20个字符，字母/数字/下划线")
+            reg_name = st.text_input("设置昵称", key="reg_name")
+            if st.button("注册", use_container_width=True):
+                uid = reg_id.strip()
+                uname = reg_name.strip()
+                if not uid:
+                    st.error("用户 ID 不能为空")
+                elif not uname:
+                    st.error("昵称不能为空")
+                elif register_user(uid, uname):
+                    st.success(f"用户「{uid}」注册成功！")
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = uid
+                    st.session_state.is_new_user = True
+                    st.rerun()
+                else:
+                    st.error(f"用户「{uid}」已存在，请直接登录")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ────────── Initialize session state ──────────
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user_id" not in st.session_state:
+    st.session_state.user_id = ""
+if "is_new_user" not in st.session_state:
+    st.session_state.is_new_user = False
+if "recommendations" not in st.session_state:
+    st.session_state.recommendations = None
+if "recommendations_drinks" not in st.session_state:
+    st.session_state.recommendations_drinks = None
+if "user_profile" not in st.session_state:
+    st.session_state.user_profile = None
+
+if not st.session_state.logged_in:
+    render_login_page()
+    st.stop()
+
+# ────────── Main App (logged in) ──────────
+
+user_id = st.session_state.user_id
+
 try:
     dishes = load_dishes()
 except Exception as exc:
     st.error(f"菜品数据读取失败：{exc}")
     st.stop()
 
-if "recommendations" not in st.session_state:
-    st.session_state.recommendations = None
-if "user_profile" not in st.session_state:
-    st.session_state.user_profile = None
+# ── New user guidance ──
+if st.session_state.is_new_user:
+    st.info(
+        "👋 欢迎使用 TasteWise！你的用户 ID 用于保存饮食记录和偏好，"
+        "后续登录时输入同一 ID 可查看历史记录。"
+    )
+    st.session_state.is_new_user = False
 
 min_data_price = float(dishes["price"].min())
 max_data_price = float(dishes["price"].max())
 canteen_count = dishes["canteen"].nunique()
 window_count = dishes["window"].nunique()
 
+# ────────── Sidebar ──────────
+
 with st.sidebar:
-    st.header("用户与筛选")
-    user_id = st.text_input(
-        "用户 ID",
-        value="demo_user",
-        help="用于记录喜欢、不喜欢和收藏行为。",
-    ).strip() or "demo_user"
+    st.markdown(f"**当前用户：** {user_id}")
+    if st.button("退出登录", use_container_width=True):
+        for key in ["logged_in", "user_id", "recommendations",
+                     "recommendations_drinks", "user_profile"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
+
+    st.markdown("---")
+    st.header("推荐筛选")
 
     hometown = st.selectbox(
         "老家是哪里",
@@ -307,6 +424,8 @@ with st.sidebar:
         help="勾选后，推荐结果将排除你已交互过（喜欢/不喜欢/收藏）的菜品。",
     )
 
+# ────────── Hero Section ──────────
+
 st.markdown(
     f"""
     <section class="tw-hero">
@@ -326,11 +445,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ────────── Taste Preferences ──────────
+
 st.markdown('<div class="tw-section-title">设置五味偏好</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="tw-section-note">评分 1 表示不喜欢，5 表示非常喜欢。默认值适合多数日常口味。</div>',
     unsafe_allow_html=True,
 )
+
+# Reset button
+reset_col1, reset_col2 = st.columns([6, 1])
+with reset_col2:
+    if st.button("🔄 重置默认", use_container_width=True):
+        st.session_state.taste_reset = True
+        st.rerun()
+
+should_reset = st.session_state.pop("taste_reset", False)
 
 taste_values: dict[str, int] = {}
 taste_cols = st.columns(5)
@@ -344,18 +474,29 @@ for col, (key, label, description, color, icon) in zip(taste_cols, TASTE_META):
                 """,
                 unsafe_allow_html=True,
             )
-            default_value = 1 if key == "bitter" else 3
+            default_value = TASTE_DEFAULTS[key]
+            current_value = default_value if should_reset else None
             taste_values[key] = st.slider(
                 label,
                 1,
                 5,
-                default_value,
+                value=current_value if current_value is not None else default_value,
                 label_visibility="collapsed",
-                key=f"taste_{key}",
+                key=f"taste_{key}" if not should_reset else f"taste_{key}_reset",
             )
 
-with st.expander("高级设置：五味重要性权重"):
-    st.caption("权重越大，推荐时越重视该味道是否匹配。")
+# ────────── Weights (algorithm-aware) ──────────
+
+is_cosine = algorithm == "余弦相似度"
+with st.expander("高级设置：五味重要性权重", expanded=False):
+    if is_cosine:
+        st.caption(
+            "⚠️ 余弦相似度天然归一化，不支持权重调整。"
+            "切换为「加权欧氏距离」后即可自定义权重。"
+        )
+    else:
+        st.caption("权重越大，推荐时越重视该味道是否匹配。")
+
     weight_values: dict[str, int] = {}
     weight_cols = st.columns(5)
     for col, (key, label, _, _, _) in zip(weight_cols, TASTE_META):
@@ -367,7 +508,10 @@ with st.expander("高级设置：五味重要性权重"):
                 5,
                 default_weight,
                 key=f"weight_{key}",
+                disabled=is_cosine,
             )
+
+# ────────── Generate Recommendations ──────────
 
 st.markdown("")
 if st.button("生成推荐", type="primary", use_container_width=True):
@@ -376,9 +520,32 @@ if st.button("生成推荐", type="primary", use_container_width=True):
     canteen_filter = None if selected_canteen == "全部" else selected_canteen
 
     exclude_ids = get_interacted_dish_ids(user_id) if exclude_eaten else None
+
+    # 按分类推荐（如果有 category 列）
+    has_category = "category" in dishes.columns
+    if has_category:
+        main_dishes = dishes[dishes["category"] == "主食"].copy()
+        drinks_snacks = dishes[dishes["category"].isin(["饮品", "小食"])].copy()
+    else:
+        main_dishes = dishes.copy()
+        drinks_snacks = dishes.iloc[0:0].copy()  # empty
+
     recommendations = recommend_dishes(
         user_profile=user_profile,
-        dishes=dishes,
+        dishes=main_dishes,
+        top_k=top_k,
+        algorithm=algorithm,
+        weights=weights,
+        canteen=canteen_filter,
+        min_price=price_range[0],
+        max_price=price_range[1],
+        exclude_recipe_ids=exclude_ids,
+    )
+
+    # 饮品小食推荐
+    recommendations_drinks = recommend_dishes(
+        user_profile=user_profile,
+        dishes=drinks_snacks,
         top_k=top_k,
         algorithm=algorithm,
         weights=weights,
@@ -391,57 +558,76 @@ if st.button("生成推荐", type="primary", use_container_width=True):
 
     st.session_state.user_profile = user_profile
     st.session_state.recommendations = recommendations
+    st.session_state.recommendations_drinks = recommendations_drinks
 
-st.markdown('<div class="tw-section-title">推荐结果</div>', unsafe_allow_html=True)
-recommendations = st.session_state.recommendations
 
-if recommendations is None:
-    st.info("设置偏好后点击“生成推荐”，这里会展示最匹配的菜品。")
-elif recommendations.empty:
-    st.warning("当前筛选条件下没有可推荐菜品，请放宽食堂或价格范围。")
-else:
-    summary_cols = st.columns(3)
-    summary_cols[0].metric("最高匹配度", f"{recommendations['match_score'].max():.1f}%")
-    summary_cols[1].metric("平均价格", f"{recommendations['price'].mean():.0f} 元")
-    summary_cols[2].metric("候选食堂", f"{recommendations['canteen'].nunique()} 个")
+# ────────── Render results helper ──────────
 
-    for rank, (_, dish) in enumerate(recommendations.iterrows(), start=1):
-        dish_id = int(dish["dish_id"])
-        with st.container(border=True):
-            left, right = st.columns([4, 1.15])
+def render_recommendations(reco_df, empty_msg):
+    if reco_df is None:
+        st.info(empty_msg)
+    elif reco_df.empty:
+        st.warning("当前筛选条件下没有可推荐菜品，请放宽食堂或价格范围。")
+    else:
+        summary_cols = st.columns(3)
+        summary_cols[0].metric("最高匹配度", f"{reco_df['match_score'].max():.1f}%")
+        summary_cols[1].metric("平均价格", f"{reco_df['price'].mean():.0f} 元")
+        summary_cols[2].metric("候选食堂", f"{reco_df['canteen'].nunique()} 个")
 
-            with left:
-                st.markdown(
-                    f"""
-                    <div class="tw-rank">推荐 #{rank}</div>
-                    <div class="tw-dish-name">{dish['name']}</div>
-                    <div class="tw-dish-meta">
-                        🏫 {dish['canteen']} · 🪟 {dish['window']} · 💰 {dish['price']:.0f} 元
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                st.progress(int(round(dish["match_score"])))
-                st.markdown(
-                    f"""
-                    <div class="tw-score">{dish['match_score']:.1f}% <small>综合匹配度</small></div>
-                    <div class="tw-reasons">{format_reasons(dish["reasons"])}</div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+        for rank, (_, dish) in enumerate(reco_df.iterrows(), start=1):
+            dish_id = int(dish["dish_id"])
+            with st.container(border=True):
+                left, right = st.columns([4, 1.15])
 
-            with right:
-                if st.button("喜欢", key=f"like_{dish_id}", use_container_width=True):
-                    append_interaction(user_id, dish_id, "like")
-                    st.success("已记录")
+                with left:
+                    st.markdown(
+                        f"""
+                        <div class="tw-rank">推荐 #{rank}</div>
+                        <div class="tw-dish-name">{dish['name']}</div>
+                        <div class="tw-dish-meta">
+                            🏫 {dish['canteen']} · 🪟 {dish['window']} · 💰 {dish['price']:.0f} 元
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.progress(int(round(dish["match_score"])))
+                    st.markdown(
+                        f"""
+                        <div class="tw-score">{dish['match_score']:.1f}% <small>综合匹配度</small></div>
+                        <div class="tw-reasons">{format_reasons(dish["reasons"])}</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                if st.button("不喜欢", key=f"dislike_{dish_id}", use_container_width=True):
-                    append_interaction(user_id, dish_id, "dislike")
-                    st.warning("已记录")
+                with right:
+                    if st.button("喜欢", key=f"like_{dish_id}", use_container_width=True):
+                        append_interaction(user_id, dish_id, "like")
+                        st.success("已记录")
 
-                if st.button("收藏", key=f"favorite_{dish_id}", use_container_width=True):
-                    append_interaction(user_id, dish_id, "favorite")
-                    st.success("已收藏")
+                    if st.button("不喜欢", key=f"dislike_{dish_id}", use_container_width=True):
+                        append_interaction(user_id, dish_id, "dislike")
+                        st.warning("已记录")
+
+                    if st.button("收藏", key=f"favorite_{dish_id}", use_container_width=True):
+                        append_interaction(user_id, dish_id, "favorite")
+                        st.success("已收藏")
+
+
+# ────────── Recommendation Results ──────────
+
+st.markdown('<div class="tw-section-title">🍚 主食推荐</div>', unsafe_allow_html=True)
+render_recommendations(
+    st.session_state.recommendations,
+    "设置偏好后点击「生成推荐」，这里会展示最匹配的主食。",
+)
+
+st.markdown('<div class="tw-section-title">🥤 饮品小食</div>', unsafe_allow_html=True)
+render_recommendations(
+    st.session_state.recommendations_drinks,
+    "设置偏好后点击「生成推荐」，这里会展示匹配的饮品和小食。",
+)
+
+# ────────── Dish List ──────────
 
 with st.expander("📋 菜品列表"):
     dish_name_query = st.text_input("搜索菜品名称", placeholder="输入菜品名称筛选…")
@@ -456,6 +642,9 @@ with st.expander("📋 菜品列表"):
         "spicy": "辣",
         "salty": "咸",
     }
+    if "category" in dishes.columns:
+        # insert category after name
+        dish_cols = {"name": "名称", "category": "分类", **{k: v for k, v in list(dish_cols.items())[1:]}}
     filtered_dishes = dishes.copy()
     if dish_name_query:
         filtered_dishes = filtered_dishes[
@@ -464,6 +653,8 @@ with st.expander("📋 菜品列表"):
     display_df = filtered_dishes[list(dish_cols.keys())].copy()
     display_df.rename(columns=dish_cols, inplace=True)
     st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+# ────────── Diet History ──────────
 
 with st.expander("📜 我的饮食记录"):
     history = load_interactions(user_id)
@@ -489,7 +680,18 @@ with st.expander("📜 我的饮食记录"):
         )
         st.dataframe(display_history, use_container_width=True, hide_index=True)
 
+        if st.button("↩️ 撤销上一次操作", use_container_width=True):
+            if undo_last_interaction(user_id):
+                st.success("已撤销最近一次操作")
+                st.rerun()
+            else:
+                st.info("没有可撤销的操作")
+
+# ────────── Footer ──────────
+
 st.markdown(
-    '<div class="tw-footer">当前版本：五味画像、Top-K 推荐、食堂/价格筛选、推荐理由、用户反馈记录、菜品浏览、饮食历史、已吃排除。数据访问层已集中，便于后续替换 CSV 或接入数据库。</div>',
+    '<div class="tw-footer">当前版本：五味画像、Top-K 推荐、食堂/价格筛选、推荐理由、'
+    '用户反馈记录、菜品浏览、饮食历史、已吃排除、主食/饮品分类推荐。'
+    '数据访问层已集中，便于后续替换 CSV 或接入数据库。</div>',
     unsafe_allow_html=True,
 )

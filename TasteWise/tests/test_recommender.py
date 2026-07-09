@@ -1,9 +1,8 @@
+import numpy as np
 import pandas as pd
 
 from recommender import recommend_dishes
 from utils.similarity import weighted_euclidean_score
-
-import numpy as np
 
 
 def test_exact_match_gets_100():
@@ -146,6 +145,5 @@ def test_hometown_preference_can_influence_ranking():
     )
 
     assert result.iloc[0]["name"] == "麻辣小炒肉"
-    assert "家乡" in "；".join(result.iloc[0]["reasons"]) or "湖南" in "；".join(
-        result.iloc[0]["reasons"]
-    )
+    reason_text = "；".join(result.iloc[0]["reasons"])
+    assert "家乡" in reason_text or "湖南" in reason_text

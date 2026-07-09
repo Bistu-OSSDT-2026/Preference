@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 DISHES_PATH = DATA_DIR / "dishes.csv"
 INTERACTIONS_PATH = DATA_DIR / "interactions.csv"
+USERS_PATH = DATA_DIR / "users.csv"
 REQUIRED_DISH_COLUMNS = {
     "dish_id",
     "name",
@@ -137,6 +138,60 @@ def get_interacted_dish_ids(user_id: str) -> set[int]:
     user_data = interactions[interactions["user_id"] == user_id]
     dish_ids = pd.to_numeric(user_data["dish_id"], errors="coerce").dropna()
     return set(int(dish_id) for dish_id in dish_ids.unique())
+
+
+def load_users() -> pd.DataFrame:
+    """读取 users.csv，返回所有用户数据。"""
+    if not USERS_PATH.exists():
+        return pd.DataFrame()
+
+    users = pd.read_csv(USERS_PATH, encoding="utf-8")
+    return users
+
+
+def register_user(user_id: str, username: str) -> bool:
+    """注册新用户，写入 users.csv。返回 True 表示成功，False 表示用户已存在。"""
+    existing = load_users()
+    if not existing.empty and user_id in existing["user_id"].values:
+        return False
+
+    USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    row = pd.DataFrame(
+        [{"user_id": user_id, "username": username}]
+    )
+
+    write_header = (
+        not USERS_PATH.exists() or USERS_PATH.stat().st_size == 0
+    )
+    row.to_csv(
+        USERS_PATH,
+        mode="a",
+        header=write_header,
+        index=False,
+        encoding="utf-8",
+    )
+    return True
+
+
+def undo_last_interaction(user_id: str) -> bool:
+    """撤销用户最后一次交互记录。返回 True 表示成功，False 表示无记录可撤销。"""
+    if not INTERACTIONS_PATH.exists():
+        return False
+
+    df = pd.read_csv(INTERACTIONS_PATH, encoding="utf-8")
+    if df.empty:
+        return False
+
+    user_rows = df[df["user_id"] == user_id]
+    if user_rows.empty:
+        return False
+
+    # 删除该用户最后一条记录（按原文件顺序的最后一条）
+    last_idx = user_rows.index[-1]
+    df = df.drop(index=last_idx).reset_index(drop=True)
+
+    df.to_csv(INTERACTIONS_PATH, index=False, encoding="utf-8")
+    return True
 
 
 data_store = CsvDataStore()
