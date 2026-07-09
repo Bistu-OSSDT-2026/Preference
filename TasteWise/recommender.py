@@ -8,6 +8,7 @@ import pandas as pd
 from utils.explanation import generate_reasons
 from utils.hometown import (
     apply_hometown_to_profile,
+    get_hometown_preference,
     hometown_keyword_bonus,
     hometown_reason,
 )
@@ -15,6 +16,7 @@ from utils.similarity import cosine_match_score, weighted_euclidean_score
 
 
 TASTE_COLUMNS = ["acid", "sweet", "bitter", "spicy", "salty"]
+HOMETOWN_SCORE_WEIGHT = 0.25
 
 
 def _validate_profile(values: Sequence[float], name: str) -> np.ndarray:
@@ -59,6 +61,12 @@ def recommend_dishes(
     """
     user = _validate_profile(user_profile, "user_profile")
     scoring_user = apply_hometown_to_profile(user, hometown)
+    hometown_preference = get_hometown_preference(hometown)
+    hometown_profile = (
+        np.asarray(hometown_preference.taste_profile, dtype=float)
+        if hometown_preference is not None
+        else None
+    )
 
     required = {"dish_id", "name", "canteen", "window", "price", *TASTE_COLUMNS}
     missing = required - set(dishes.columns)
@@ -104,9 +112,25 @@ def recommend_dishes(
         )
 
         if algorithm == "加权欧氏距离":
-            score = weighted_euclidean_score(scoring_user, dish_profile, weight_arr)
+            score = weighted_euclidean_score(user, dish_profile, weight_arr)
+            if hometown_profile is not None:
+                hometown_score = weighted_euclidean_score(
+                    hometown_profile,
+                    dish_profile,
+                    weight_arr,
+                )
+                score = (
+                    score * (1.0 - HOMETOWN_SCORE_WEIGHT)
+                    + hometown_score * HOMETOWN_SCORE_WEIGHT
+                )
         elif algorithm == "余弦相似度":
-            score = cosine_match_score(scoring_user, dish_profile)
+            score = cosine_match_score(user, dish_profile)
+            if hometown_profile is not None:
+                hometown_score = cosine_match_score(hometown_profile, dish_profile)
+                score = (
+                    score * (1.0 - HOMETOWN_SCORE_WEIGHT)
+                    + hometown_score * HOMETOWN_SCORE_WEIGHT
+                )
         else:
             raise ValueError(f"不支持的算法：{algorithm}")
 

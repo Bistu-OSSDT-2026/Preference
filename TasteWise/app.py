@@ -540,6 +540,7 @@ if st.button("生成推荐", type="primary", use_container_width=True):
         min_price=price_range[0],
         max_price=price_range[1],
         exclude_recipe_ids=exclude_ids,
+        hometown=hometown,
     )
 
     # 饮品小食推荐
