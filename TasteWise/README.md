@@ -189,7 +189,7 @@ streamlit run app.py
 
 ### 菜品数据（dishes.csv）
 
-系统内置了 **60 道菜品**，覆盖 5 个食堂。位于 `data/dishes.csv`。
+系统内置了 **878 道菜品**，覆盖 2 个食堂（一食堂、二食堂）。位于 `data/dishes.csv`。
 
 **添加新菜品：**
 直接用 Excel 或文本编辑器打开 `data/dishes.csv`，新增一行：
@@ -249,30 +249,30 @@ tests/test_recommender.py::test_price_filter PASSED
 ## 项目结构
 
 ```
-TasteWise/                          # 项目根目录
-├── app.py                          # Streamlit 主入口（启动文件）
-├── recommender.py                  # 推荐引擎（算法调度+筛选+排序）
-├── data_manager.py                 # CSV 数据读写层
-├── requirements.txt                # Python 依赖清单
-├── README.md                       # 本文件
-├── start.bat                       # Windows 一键启动脚本
-├── start.ps1                       # PowerShell 一键启动脚本
-├── LICENSE                         # MIT 开源协议
-├── .gitignore                      # Git 忽略规则
-│
-├── data/                           # 数据文件目录
-│   ├── dishes.csv                  # 菜品数据（60道）
-│   ├── interactions.csv            # 用户交互记录
-│   └── users.csv                   # 用户预设数据
-│
-├── utils/                          # 工具模块
-│   ├── __init__.py                 # 空文件
-│   ├── similarity.py               # 相似度算法实现
-│   └── explanation.py              # 推荐理由生成
-│
-└── tests/                          # 测试目录
-    ├── conftest.py                 # pytest 路径配置
-    └── test_recommender.py         # 推荐引擎单元测试
+	TasteWise/                          # 项目根目录
+	├── app.py                          # Streamlit 主入口（启动文件）
+	├── recommender.py                  # 推荐引擎（算法调度+筛选+排序）
+	├── data_manager.py                 # CSV 数据读写层
+	├── requirements.txt                # Python 依赖清单
+	├── README.md                       # 本文件
+	├── start.bat                       # Windows 一键启动脚本
+	├── start.ps1                       # PowerShell 一键启动脚本
+	├── LICENSE                         # MIT 开源协议
+	├── .gitignore                      # Git 忽略规则
+	│
+	├── data/                           # 数据文件目录
+	│   ├── dishes.csv                  # 菜品数据（878道，含分类）
+	│   ├── interactions.csv            # 用户交互记录
+	│   └── users.csv                   # 用户预设数据
+	│
+	├── utils/                          # 工具模块
+	│   ├── __init__.py                 # 空文件
+	│   ├── similarity.py               # 相似度算法实现
+	│   └── explanation.py              # 推荐理由生成
+	│
+	└── tests/                          # 测试目录
+	    ├── conftest.py                 # pytest 路径配置
+	    └── test_recommender.py         # 推荐引擎单元测试
 ```
 
 ---
