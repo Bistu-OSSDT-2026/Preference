@@ -55,36 +55,55 @@ TasteWise/
 
 ## 快速开始
 
-### 1. 进入项目目录
+### 方法一：一键启动（推荐 ⭐）
 
+**Windows (cmd)** — 双击或执行：
+```batch
+cd TasteWise
+start.bat
+```
+
+**Windows (PowerShell):**
 ```powershell
 cd TasteWise
+.\start.ps1
+```
+> 如果提示"无法加载文件"，先执行：`Set-ExecutionPolicy -Scope Process Bypass`
+
+**macOS / Linux:**
+```bash
+cd TasteWise
+chmod +x start.sh
+./start.sh
 ```
 
-### 2. 创建并激活虚拟环境
+启动脚本会自动完成：✅ 检测 Python → ✅ 创建虚拟环境 → ✅ 安装依赖 → ✅ 启动应用。
+
+启动成功后，终端会输出：
+```
+Local URL: http://localhost:8501
+```
+
+浏览器会自动打开这个地址，那就是 TasteWise 的界面。
+
+### 方法二：手动分步启动
 
 ```powershell
+# 1. 进入项目目录
+cd TasteWise
+
+# 2. 创建虚拟环境
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
 
-如果 PowerShell 阻止脚本执行，可以临时允许当前窗口执行脚本：
+# 3. 激活虚拟环境
+#    Windows (cmd):  .venv\Scripts\activate.bat
+#    Windows (PS):   .\.venv\Scripts\Activate.ps1
+#    Mac/Linux:      source .venv/bin/activate
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-```
-
-然后再次运行激活命令。
-
-### 3. 安装依赖
-
-```powershell
+# 4. 安装依赖
 pip install -r requirements.txt
-```
 
-### 4. 启动应用
-
-```powershell
+# 5. 启动应用
 streamlit run app.py
 ```
 
@@ -93,6 +112,10 @@ streamlit run app.py
 ```text
 http://127.0.0.1:8501
 ```
+
+### 停止应用
+
+在终端中按 `Ctrl + C`，或直接关闭启动脚本的窗口。
 
 ## 运行测试
 
