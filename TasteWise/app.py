@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
 from data_manager import (
@@ -7,10 +8,13 @@ from data_manager import (
     append_interaction,
     get_comments,
     get_interacted_dish_ids,
+    get_last_session,
     load_dishes,
     load_interactions,
+    load_recommendation_history,
     load_users,
     register_user,
+    save_recommendation_session,
     undo_last_interaction,
 )
 from recommender import recommend_dishes
@@ -352,6 +356,10 @@ if "recommendations_drinks" not in st.session_state:
     st.session_state.recommendations_drinks = None
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = None
+if "preferences_restored" not in st.session_state:
+    st.session_state.preferences_restored = False
+if "history_dish_detail" not in st.session_state:
+    st.session_state.history_dish_detail = None
 
 if not st.session_state.logged_in:
     render_login_page()
@@ -374,6 +382,23 @@ if st.session_state.is_new_user:
         "后续登录时输入同一 ID 可查看历史记录。"
     )
     st.session_state.is_new_user = False
+
+# ── Auto-restore last session preferences ──
+if not st.session_state.preferences_restored:
+    last_session = get_last_session(user_id)
+    if last_session is not None:
+        st.session_state.preferences_restored = True
+        # Store restored values in session_state for sliders to pick up
+        st.session_state._restored_taste = last_session["taste_profile"]
+        st.session_state._restored_weights = last_session["weights"]
+        st.session_state._restored_algorithm = last_session["algorithm"]
+        st.session_state._restored_canteen = last_session["canteen_filter"]
+        st.session_state._restored_price = (
+            last_session["price_min"],
+            last_session["price_max"],
+        )
+    else:
+        st.session_state.preferences_restored = True
 
 min_data_price = float(dishes["price"].min())
 max_data_price = float(dishes["price"].max())
@@ -402,19 +427,43 @@ with st.sidebar:
     st.caption(HOMETOWN_PREFERENCES[hometown].description)
 
     canteens = ["全部"] + sorted(dishes["canteen"].dropna().unique().tolist())
-    selected_canteen = st.selectbox("食堂", canteens)
+
+    # Restore canteen from last session
+    restored_canteen_idx = 0
+    if "_restored_canteen" in st.session_state and st.session_state._restored_canteen:
+        restored_canteen = st.session_state._restored_canteen
+        if restored_canteen in canteens:
+            restored_canteen_idx = canteens.index(restored_canteen)
+
+    selected_canteen = st.selectbox("食堂", canteens, index=restored_canteen_idx)
+
+    # Restore price from last session
+    restored_price = None
+    if "_restored_price" in st.session_state:
+        rp = st.session_state._restored_price
+        if rp and rp[0] >= min_data_price and rp[1] <= max_data_price:
+            restored_price = rp
 
     price_range = st.slider(
         "价格范围（元）",
         min_value=min_data_price,
         max_value=max_data_price,
-        value=(min_data_price, max_data_price),
+        value=restored_price if restored_price else (min_data_price, max_data_price),
         step=1.0,
     )
 
+    # Restore algorithm from last session
+    algo_options = ["加权欧氏距离", "余弦相似度"]
+    restored_algo_idx = 0
+    if "_restored_algorithm" in st.session_state:
+        ra = st.session_state._restored_algorithm
+        if ra in algo_options:
+            restored_algo_idx = algo_options.index(ra)
+
     algorithm = st.selectbox(
         "推荐算法",
-        ["加权欧氏距离", "余弦相似度"],
+        algo_options,
+        index=restored_algo_idx,
         help="加权欧氏距离更看重具体口味接近；余弦相似度更看重五味方向相似。",
     )
 
@@ -425,6 +474,43 @@ with st.sidebar:
         value=False,
         help="勾选后，推荐结果将排除你已交互过（喜欢/不喜欢/收藏）的菜品。",
     )
+
+    # ── Recommendation History in Sidebar ──
+    st.markdown("---")
+    with st.expander("📋 推荐历史", expanded=False):
+        history_df = load_recommendation_history(user_id)
+        if history_df.empty:
+            st.info("暂无推荐历史。生成推荐后会自动保存。")
+        else:
+            st.caption(f"共 {len(history_df)} 条记录")
+            for idx, (_, row) in enumerate(history_df.iterrows()):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    dish_names = row.get("top_dish_names", [])
+                    top_dish_str = ", ".join(dish_names[:3])
+                    scores = row.get("top_match_scores", [])
+                    best_score = f"{max(scores):.0f}%" if scores else "N/A"
+                    st.markdown(
+                        f"**{row['timestamp']}**  \n"
+                        f"🏆 {best_score} · {row['algorithm']}  \n"
+                        f"🍽️ {top_dish_str}",
+                        help=f"食堂: {row.get('canteen_filter', '全部') or '全部'} | "
+                        f"价格: {row['price_min']:.0f}-{row['price_max']:.0f}元",
+                    )
+                with col2:
+                    if st.button("🔄 恢复", key=f"restore_{row['session_id']}", use_container_width=True):
+                        st.session_state._restored_taste = row["taste_profile"]
+                        st.session_state._restored_weights = row["weights"]
+                        st.session_state._restored_algorithm = row["algorithm"]
+                        st.session_state._restored_canteen = row.get("canteen_filter") or None
+                        st.session_state._restored_price = (
+                            float(row["price_min"]),
+                            float(row["price_max"]),
+                        )
+                        st.session_state.preferences_restored = False
+                        st.rerun()
+                if idx < len(history_df) - 1:
+                    st.divider()
 
 # ────────── Hero Section ──────────
 
@@ -477,6 +563,9 @@ for col, (key, label, description, color, icon) in zip(taste_cols, TASTE_META):
                 unsafe_allow_html=True,
             )
             default_value = TASTE_DEFAULTS[key]
+            # Use restored value if available
+            if "_restored_taste" in st.session_state and not should_reset:
+                default_value = st.session_state._restored_taste.get(key, default_value)
             current_value = default_value if should_reset else None
             taste_values[key] = st.slider(
                 label,
@@ -504,6 +593,9 @@ with st.expander("高级设置：五味重要性权重", expanded=False):
     for col, (key, label, _, _, _) in zip(weight_cols, TASTE_META):
         with col:
             default_weight = 2 if key == "spicy" else 1
+            # Use restored weight if available
+            if "_restored_weights" in st.session_state:
+                default_weight = st.session_state._restored_weights.get(key, default_weight)
             weight_values[key] = st.slider(
                 f"{label}权重",
                 1,
@@ -561,6 +653,36 @@ if st.button("生成推荐", type="primary", use_container_width=True):
     st.session_state.user_profile = user_profile
     st.session_state.recommendations = recommendations
     st.session_state.recommendations_drinks = recommendations_drinks
+
+    # Save recommendation session to history
+    taste_dict = {TASTE_META[i][0]: user_profile[i] for i in range(5)}
+    weight_dict = {TASTE_META[i][0]: weights[i] for i in range(5)}
+    combined_results = pd.concat(
+        [recommendations, recommendations_drinks], ignore_index=True
+    )
+    if not combined_results.empty:
+        save_recommendation_session(
+            user_id=user_id,
+            taste_profile=taste_dict,
+            weights=weight_dict,
+            algorithm=algorithm,
+            canteen_filter=canteen_filter,
+            price_min=price_range[0],
+            price_max=price_range[1],
+            top_results=combined_results,
+        )
+        # Refresh history in session state
+        st.session_state.recommendation_history = load_recommendation_history(user_id)
+
+    # Clear restored values after first successful recommendation
+    for key in (
+        "_restored_taste",
+        "_restored_weights",
+        "_restored_algorithm",
+        "_restored_canteen",
+        "_restored_price",
+    ):
+        st.session_state.pop(key, None)
 
 
 # ────────── Render results helper ──────────
