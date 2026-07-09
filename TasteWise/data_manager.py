@@ -11,6 +11,7 @@ DATA_DIR = BASE_DIR / "data"
 DISHES_PATH = DATA_DIR / "dishes.csv"
 INTERACTIONS_PATH = DATA_DIR / "interactions.csv"
 USERS_PATH = DATA_DIR / "users.csv"
+COMMENTS_PATH = DATA_DIR / "comments.csv"
 REQUIRED_DISH_COLUMNS = {
     "dish_id",
     "name",
@@ -203,3 +204,45 @@ def load_dishes() -> pd.DataFrame:
 
 def append_interaction(user_id: str, dish_id: int, action: str) -> None:
     data_store.append_interaction(user_id, dish_id, action)
+
+
+def add_comment(user_id: str, dish_id: int, comment_text: str) -> None:
+    """添加一条菜品评论"""
+    if not comment_text.strip():
+        raise ValueError("评论内容不能为空")
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    row = pd.DataFrame(
+        [
+            {
+                "user_id": user_id,
+                "dish_id": int(dish_id),
+                "comment": comment_text.strip(),
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+            }
+        ]
+    )
+
+    write_header = not COMMENTS_PATH.exists() or COMMENTS_PATH.stat().st_size == 0
+    row.to_csv(
+        COMMENTS_PATH,
+        mode="a",
+        header=write_header,
+        index=False,
+        encoding="utf-8",
+    )
+
+
+def get_comments(dish_id: int) -> pd.DataFrame:
+    """获取某道菜品的所有评论，按时间倒序排列"""
+    if not COMMENTS_PATH.exists():
+        return pd.DataFrame(columns=["user_id", "dish_id", "comment", "timestamp"])
+
+    comments = pd.read_csv(COMMENTS_PATH, encoding="utf-8")
+    comments = comments[comments["dish_id"] == dish_id].copy()
+    if comments.empty:
+        return comments
+
+    comments.sort_values("timestamp", ascending=False, inplace=True)
+    return comments
