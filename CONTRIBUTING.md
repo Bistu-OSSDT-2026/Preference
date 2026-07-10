@@ -103,6 +103,24 @@ streamlit run app.py
 pytest -q
 ```
 
+也可以从仓库根目录运行开发检查脚本：
+
+```powershell
+.\scripts\check.ps1
+```
+
+如果只修改推荐算法，可以先运行更快的推荐测试：
+
+```powershell
+.\scripts\check.ps1 -RecommenderOnly
+```
+
+如果系统找不到 `python`，可以显式指定解释器路径：
+
+```powershell
+.\scripts\check.ps1 -Python .\TasteWise\.venv\Scripts\python.exe
+```
+
 ## 发布前检查
 
 发布版本前请确认：
