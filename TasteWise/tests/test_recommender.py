@@ -147,3 +147,52 @@ def test_hometown_preference_can_influence_ranking():
     assert result.iloc[0]["name"] == "麻辣小炒肉"
     reason_text = "；".join(result.iloc[0]["reasons"])
     assert "家乡" in reason_text or "湖南" in reason_text
+
+
+def test_hometown_profile_affects_score_without_keywords():
+    dishes = pd.DataFrame(
+        [
+            {
+                "dish_id": 1,
+                "name": "A",
+                "canteen": "一食堂",
+                "window": "窗口1",
+                "price": 10,
+                "acid": 3,
+                "sweet": 4,
+                "bitter": 1,
+                "spicy": 1,
+                "salty": 3,
+            },
+            {
+                "dish_id": 2,
+                "name": "B",
+                "canteen": "一食堂",
+                "window": "窗口2",
+                "price": 10,
+                "acid": 2,
+                "sweet": 1,
+                "bitter": 1,
+                "spicy": 5,
+                "salty": 4,
+            },
+        ]
+    )
+
+    base = recommend_dishes(
+        user_profile=[3, 3, 1, 3, 3],
+        dishes=dishes,
+        top_k=2,
+    )
+    regional = recommend_dishes(
+        user_profile=[3, 3, 1, 3, 3],
+        dishes=dishes,
+        top_k=2,
+        hometown="川渝地区",
+    )
+
+    base_scores = dict(zip(base["dish_id"], base["match_score"]))
+    regional_scores = dict(zip(regional["dish_id"], regional["match_score"]))
+
+    assert regional_scores[2] > base_scores[2]
+    assert regional_scores[1] < base_scores[1]

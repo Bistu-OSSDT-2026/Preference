@@ -98,6 +98,19 @@ score = similarity * 100
 - **输出**: 0~100 的匹配度百分比
 - **不支持权重**: 余弦相似度天生归一化
 
+#### 地域口味综合评分
+
+当用户选择“老家是哪里”时，系统会在基础五味匹配之外引入地域口味画像。
+
+```python
+final_score = user_score * 0.75 + hometown_score * 0.25 + keyword_bonus
+```
+
+- `user_score`: 用户手动设置五味偏好与菜品五味画像的匹配分
+- `hometown_score`: 家乡地域口味画像与菜品五味画像的匹配分
+- `keyword_bonus`: 菜名、窗口或食堂中命中地域菜品线索时的小幅加分
+- **排序依据**: 所有候选菜品按 `final_score` 从高到低排序，取 Top-K
+
 ### 3.5 数据存储
 
 | 文件 | 路径 | 说明 |
@@ -111,7 +124,7 @@ score = similarity * 100
 | 项目 | 选择 | 版本 |
 |------|------|------|
 | **框架** | pytest | ≥ 8.0 |
-| **测试文件** | `tests/test_recommender.py` | 3 个测试用例 |
+| **测试文件** | `tests/test_recommender.py` | 覆盖 Top-K、价格筛选、地域口味影响等场景 |
 | **路径配置** | `tests/conftest.py` | 自动将项目根目录加入 `sys.path` |
 
 ---

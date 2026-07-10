@@ -111,7 +111,7 @@ def hometown_keyword_bonus(dish: pd.Series, hometown: str | None) -> float:
         str(dish.get(column, ""))
         for column in ("name", "canteen", "window")
     )
-    return 4.0 if any(keyword in searchable for keyword in preference.keywords) else 0.0
+    return 6.0 if any(keyword in searchable for keyword in preference.keywords) else 0.0
 
 
 def hometown_reason(dish: pd.Series, hometown: str | None) -> str | None:
