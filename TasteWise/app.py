@@ -53,6 +53,7 @@ st.markdown(
     }
 
     .stApp {
+        color-scheme: light;
         background:
             radial-gradient(circle at top left, rgba(250, 204, 21, 0.18), transparent 28rem),
             linear-gradient(180deg, #fffaf0 0%, #f8fafc 46%, #eef2f7 100%);
@@ -265,6 +266,60 @@ st.markdown(
     .stButton > button {
         border-radius: 8px;
         font-weight: 700;
+    }
+
+    /* Keep native controls readable alongside the custom light surfaces,
+       including sessions with a previously selected dark theme. */
+    [data-testid="stHeader"],
+    [data-testid="stExpander"] details,
+    [data-testid="stExpander"] summary,
+    [data-testid="stTextInput"] [data-baseweb="input"],
+    [data-testid="stNumberInput"] [data-baseweb="input"],
+    [data-baseweb="select"] > div,
+    [data-baseweb="popover"],
+    [data-baseweb="menu"],
+    [role="listbox"] {
+        background: #ffffff !important;
+        color: #172033 !important;
+    }
+
+    .stApp [data-testid="stWidgetLabel"],
+    .stApp [data-testid="stWidgetLabel"] p,
+    [data-testid="stExpander"] summary *,
+    [data-testid="stHeader"] button,
+    [data-testid="stHeader"] a,
+    [data-baseweb="select"],
+    [role="option"],
+    button[role="tab"] {
+        color: #172033 !important;
+    }
+
+    .stApp input, .stApp textarea {
+        background: #ffffff !important;
+        color: #172033 !important;
+        -webkit-text-fill-color: #172033 !important;
+        caret-color: #172033;
+    }
+    .stApp input::placeholder, .stApp textarea::placeholder {
+        color: #596579 !important;
+        -webkit-text-fill-color: #596579 !important;
+        opacity: 1;
+    }
+    .stApp button[kind="secondary"],
+    .stApp button[kind="secondaryFormSubmit"] {
+        background: #ffffff !important;
+        color: #172033 !important;
+        border: 1px solid #94a3b8 !important;
+    }
+    .stApp button[kind="primary"],
+    .stApp button[kind="primaryFormSubmit"] {
+        background: #b9380b !important;
+        color: #ffffff !important;
+    }
+    .stApp button p { color: inherit; }
+    .stApp button:focus-visible, .stApp input:focus-visible {
+        outline: 2px solid #b9380b;
+        outline-offset: 2px;
     }
 
     .stProgress > div > div > div > div {
