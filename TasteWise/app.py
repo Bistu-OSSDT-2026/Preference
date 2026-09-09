@@ -322,6 +322,71 @@ st.markdown(
         outline-offset: 2px;
     }
 
+    /* Pair foregrounds with light surfaces at the widget-content level.
+       Nested BaseWeb elements may otherwise retain their dark theme. */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stSidebarContent"] {
+        color: #172033 !important;
+        background-color: #f8fafc !important;
+        color-scheme: light;
+    }
+    .stApp label, .stApp label p,
+    .stApp h1, .stApp h2, .stApp h3,
+    .stApp [data-testid="stMarkdownContainer"] p,
+    .stApp [data-testid="stCaptionContainer"],
+    .stApp [data-testid="stMetricLabel"],
+    .stApp [data-testid="stMetricValue"],
+    .stApp [data-testid="stCheckbox"] span {
+        color: #172033 !important;
+    }
+    .stApp .tw-section-note, .stApp .tw-taste-desc,
+    .stApp .tw-dish-meta, .stApp .tw-metric span,
+    .stApp .tw-footer, .stApp .tw-reasons {
+        color: #475569 !important;
+    }
+    .stApp [data-baseweb="select"] > div,
+    .stApp [data-baseweb="select"] > div *,
+    .stApp [data-baseweb="input"],
+    .stApp [data-baseweb="base-input"],
+    [data-baseweb="menu"] ul,
+    [role="option"], [role="option"] * {
+        background-color: #ffffff !important;
+        color: #172033 !important;
+        -webkit-text-fill-color: #172033 !important;
+    }
+    [role="option"][aria-selected="true"],
+    [role="option"]:hover {
+        background-color: #e2e8f0 !important;
+    }
+    .stApp .stButton > button,
+    .stApp [data-testid="stFormSubmitButton"] > button {
+        background: #ffffff !important;
+        color: #172033 !important;
+        border: 1px solid #94a3b8 !important;
+    }
+    .stApp .stButton > button p,
+    .stApp [data-testid="stFormSubmitButton"] > button p {
+        color: #172033 !important;
+    }
+    .stApp .stButton > button[kind="primary"],
+    .stApp [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"] {
+        background: #b9380b !important;
+        color: #ffffff !important;
+    }
+    .stApp .stButton > button[kind="primary"] p,
+    .stApp [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"] p {
+        color: #ffffff !important;
+    }
+    .stApp [data-testid="stSlider"] [data-testid="stTickBarMin"],
+    .stApp [data-testid="stSlider"] [data-testid="stTickBarMax"],
+    .stApp [data-testid="stSlider"] [data-testid="stThumbValue"] {
+        color: #9a3412 !important;
+    }
+    .stApp [data-testid="stAlert"] {
+        background-color: #eff6ff !important;
+        color: #172033 !important;
+    }
+
     .stProgress > div > div > div > div {
         background-color: var(--tw-primary);
     }
